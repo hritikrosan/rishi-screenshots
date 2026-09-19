@@ -1,0 +1,60 @@
+name: 📷 ScreenShot Live Hosts (GoWitness)
+# Alt: 
+#MAX_RUNTIME: ~ 30-45 Mins (Per 1000 hosts)
+
+on:
+  workflow_dispatch: # Whenever manually run from actions-tab
+  schedule:
+    - cron: "15 22 * * *" #( 10:15 PM UTC --> 04:00 AM Midnight )
+#------------------------------------------------------------------------------------#  
+env:
+  # DO NOT MODIFY ANYTHING ELSE
+  INVENTORY_REPO_USER: "${{ secrets.INVENTORY_REPO_USER }}"
+  INVENTORY_REPO_TOKEN: "${{ secrets.INVENTORY_REPO_TOKEN }}"
+#------------------------------------------------------------------------------------#
+jobs:
+  Shoot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300 
+    permissions:
+      contents: write
+      
+    steps:        
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: main
+          filter: "blob:none" #https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
+     
+      - name: Initialize
+        run: |
+          # Presets
+          set +x ; set +e
+          #--------------#
+          ##Pre-Exec (INIT)
+          curl -qfsSL "https://$INVENTORY_REPO_USER:$INVENTORY_REPO_TOKEN@raw.githubusercontent.com/handsomeslop/conceal/main/.github/scripts/_init_deps.sh" -o "./_init_deps.sh"
+          dos2unix --quiet "./_init_deps.sh" 2>/dev/null ; sudo chmod +xwr "./_init_deps.sh" ; source "./_init_deps.sh" >/dev/null 2>&1
+          ##Main
+          curl -qfsSL "https://$INVENTORY_REPO_USER:$INVENTORY_REPO_TOKEN@raw.githubusercontent.com/handsomeslop/conceal/main/.github/scripts/screenshot_servers.sh" -o "./screenshot_servers.sh"
+          dos2unix --quiet "./screenshot_servers.sh" ; sudo chmod +xwr "./screenshot_servers.sh"
+          #Run
+          #Always run with STD_OUT + STD_IN >/dev/null
+          #bash "./screenshot_servers.sh" >/dev/null 2>&1
+          ##Talscale + Tmux + gotty
+          #tmux new-session -s "inventory" -d 'bash "./screenshot_servers.sh" ; tmux kill-session -t "inventory" 2>/dev/null ; exit'
+          # pub.ajam.dev's own copy of this wordlist 404s behind an alive
+          # redirect (used to leave ZPROC empty -- zproccer -a '' runs the
+          # process under a BLANK name in ps, worse than no masquerade at
+          # all), so this pulls from the still-live pkgforge-security mirror
+          # instead. Embedded fallback list covers it if that ever goes down too.
+          ZPROC="$(curl -qfsSL 'https://raw.githubusercontent.com/pkgforge-security/Wordlists/main/Misc/legit_ps_linux.txt' | shuf -n 1 2>/dev/null | cut -c 1-100 2>/dev/null)"
+          if [ -z "$ZPROC" ]; then ZPROC="$(printf '%s\n' systemd-journald systemd-udevd systemd-resolved rsyslogd cron dbus-daemon polkitd unattended-upgr networkd-dispat | shuf -n 1)"; fi
+          export ZPROC="${ZPROC}"
+          tmux new-session -s "inventory" -d 'zproccer -f -a '\'"${ZPROC}"\'' bash "./screenshot_servers.sh" ; tmux kill-session -t "inventory" 2>/dev/null ; exit'
+          #nohup gotty --address "$TS_IP" --port "7070" --reconnect --reconnect-time 30 tmux attach-session -t "inventory" -r >/dev/null 2>&1 &
+          nohup gotty --address "127.0.0.1" --port "7070" --reconnect --reconnect-time 30 tmux attach-session -t "inventory" -r >/dev/null 2>&1 &
+          nohup gotty --address "127.0.0.1" --port "7777" --reconnect --reconnect-time 30 btop --tty_on --utf-force >/dev/null 2>&1 &
+          echo -e "\n\n[+] Tmux TTY: http://$TS_DNS:7070"
+          echo -e "[+] BTOP: http://$TS_DNS:7777\n"
+          set +x ; while tmux has-session -t "inventory" ; do sleep 1 ; done
+        continue-on-error: true
