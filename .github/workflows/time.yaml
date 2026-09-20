@@ -31,7 +31,5 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           repository: ./main        
-          commit_user_name: Avinash0x1 # defaults to "github-actions[bot]"
-          commit_user_email: avinashthakur0x1@gmail.com # defaults to "41898282+github-actions[bot]@users.noreply.github.com"
           commit_message: "✅ Time <-- ${{ env.NEPALI_TIME }} ⌚"
           #push_options: '--force'
