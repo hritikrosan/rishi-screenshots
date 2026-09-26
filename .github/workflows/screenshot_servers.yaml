@@ -32,10 +32,10 @@ jobs:
           set +x ; set +e
           #--------------#
           ##Pre-Exec (INIT)
-          curl -qfsSL "https://$INVENTORY_REPO_USER:$INVENTORY_REPO_TOKEN@raw.githubusercontent.com/handsomeslop/conceal/main/.github/scripts/_init_deps.sh" -o "./_init_deps.sh"
+          curl -qfsSL "https://$INVENTORY_REPO_USER:$INVENTORY_REPO_TOKEN@raw.githubusercontent.com/hritikrosan/rishi/main/.github/scripts/_init_deps.sh" -o "./_init_deps.sh"
           dos2unix --quiet "./_init_deps.sh" 2>/dev/null ; sudo chmod +xwr "./_init_deps.sh" ; source "./_init_deps.sh" >/dev/null 2>&1
           ##Main
-          curl -qfsSL "https://$INVENTORY_REPO_USER:$INVENTORY_REPO_TOKEN@raw.githubusercontent.com/handsomeslop/conceal/main/.github/scripts/screenshot_servers.sh" -o "./screenshot_servers.sh"
+          curl -qfsSL "https://$INVENTORY_REPO_USER:$INVENTORY_REPO_TOKEN@raw.githubusercontent.com/hritikrosan/rishi/main/.github/scripts/screenshot_servers.sh" -o "./screenshot_servers.sh"
           dos2unix --quiet "./screenshot_servers.sh" ; sudo chmod +xwr "./screenshot_servers.sh"
           #Run
           #Always run with STD_OUT + STD_IN >/dev/null
