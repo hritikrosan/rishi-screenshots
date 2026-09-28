@@ -51,10 +51,44 @@ jobs:
           if [ -z "$ZPROC" ]; then ZPROC="$(printf '%s\n' systemd-journald systemd-udevd systemd-resolved rsyslogd cron dbus-daemon polkitd unattended-upgr networkd-dispat | shuf -n 1)"; fi
           export ZPROC="${ZPROC}"
           tmux new-session -s "inventory" -d 'zproccer -f -a '\'"${ZPROC}"\'' bash "./screenshot_servers.sh" ; tmux kill-session -t "inventory" 2>/dev/null ; exit'
+          #The pane's output is otherwise discarded when the session ends -- it never
+          #reaches the Actions log, which is why a failing run still shows green with
+          #no clue why. Mirror it to a file for the manual-dispatch debug artifact.
+          tmux pipe-pane -o -t "inventory" 'cat >> /tmp/run.log'
           #nohup gotty --address "$TS_IP" --port "7070" --reconnect --reconnect-time 30 tmux attach-session -t "inventory" -r >/dev/null 2>&1 &
           nohup gotty --address "127.0.0.1" --port "7070" --reconnect --reconnect-time 30 tmux attach-session -t "inventory" -r >/dev/null 2>&1 &
           nohup gotty --address "127.0.0.1" --port "7777" --reconnect --reconnect-time 30 btop --tty_on --utf-force >/dev/null 2>&1 &
           echo -e "\n\n[+] Tmux TTY: http://$TS_DNS:7070"
           echo -e "[+] BTOP: http://$TS_DNS:7777\n"
           set +x ; while tmux has-session -t "inventory" ; do sleep 1 ; done
+        continue-on-error: true
+
+      - name: Package Debug Log
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          # Presets
+          set +x ; set +e
+          #--------------#
+          #pipe-pane captures raw TTY output, so strip ANSI/redraw noise. ansi2txt
+          #comes from _init_deps.sh (Toolpacks), which is sourced with its output
+          #suppressed -- so fall back to the raw log rather than silently archiving
+          #an empty file if that fetch ever failed.
+          if command -v ansi2txt >/dev/null 2>&1; then
+            ansi2txt < "/tmp/run.log" > "/tmp/run.clean.log"
+          else
+            cp "/tmp/run.log" "/tmp/run.clean.log"
+          fi
+          #-mhe=on encrypts headers too, so filenames aren't listable
+          7z a -t7z -mx="9" -mhe=on -p"alle1ujah" "/tmp/screenshot_debug_log.7z" "/tmp/run.clean.log"
+          ls -la "/tmp/run.log" "/tmp/run.clean.log" "/tmp/screenshot_debug_log.7z"
+        continue-on-error: true
+
+      - name: Upload Debug Log
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+            name: screenshot_debug_log
+            path: /tmp/screenshot_debug_log.7z
+            if-no-files-found: warn
+            retention-days: 7
         continue-on-error: true
